@@ -1,0 +1,16 @@
+[paths]
+source =
+   src/equitable_coloring
+   */site-packages/equitable_coloring
+
+[run]
+branch = true
+source =
+    equitable_coloring
+    tests
+parallel = true
+
+[report]
+show_missing = true
+precision = 2
+omit = *migrations*

@@ -32,7 +32,7 @@ setup(
         re.sub(':[a-z]+:`~?(.*?)`', r'``\1``', read('CHANGELOG.rst'))
     ),
     author='Utkarsh Upadhyay',
-    author_email='mail@musicallyut.in',
+    author_email='musically.ut@gmail.com',
     url='https://github.com/musically-ut/equitable-coloring',
     packages=find_packages('src'),
     package_dir={'': 'src'},
@@ -66,6 +66,7 @@ setup(
         # eg: 'keyword1', 'keyword2', 'keyword3',
     ],
     install_requires=[
+        'networkx>=1.10'
         # eg: 'aspectlib==1.1.1', 'six>=1.7',
     ],
     extras_require={
