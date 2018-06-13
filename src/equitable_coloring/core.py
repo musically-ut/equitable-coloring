@@ -1,4 +1,34 @@
 import networkx as nx
+from collections import defaultdict
+
+
+def is_coloring(G, coloring):
+    """Determine if the coloring is a valid coloring for the graph G."""
+    # Verify that the coloring is valid.
+    for (s, d) in G.edges:
+        if coloring[s] == coloring[d]:
+            return False
+    return True
+
+
+def is_equitable(G, coloring):
+    """Determines if the coloring is valid and equitable for the graph G."""
+
+    if not is_coloring(G, coloring):
+        return False
+
+    # Verify whether it is equitable.
+    color_set_size = defaultdict(int)
+    for color in coloring.values():
+        color_set_size[color] += 1
+
+    # If there are less then 2 distinct values, the coloring cannot be equitable
+    all_set_sizes = set(color_set_size.values())
+    if len(all_set_sizes) > 2:
+        return False
+
+    a, b = list(all_set_sizes)
+    return abs(a - b) <= 1
 
 
 def equitable_color(G, r):
