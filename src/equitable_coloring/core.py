@@ -32,6 +32,32 @@ def is_equitable(G, coloring):
     return abs(a - b) <= 1
 
 
+def change_color(u, X, Y, N, H, F, C):
+    """Change the color of 'u' from X to Y and update N, H, F, C."""
+    # Change the class of 'u' from X to Y
+    F[u] = Y
+
+    # 'u' witnesses and edge from Y -> X instead of from X -> Y now.
+    H[(X, Y)] -= 1
+    H[(Y, X)] += 1
+
+    for v in G.neighbors(u):
+        # 'v' has lost a neighbor in X and gained one in Y
+        N[(v, X)] -= 1
+        N[(v, Y)] += 1
+
+        if N[(v, X)] == 0:
+            # 'v' witnesses F[v] -> X
+            H[(F[v], X)] += 1
+
+        if N[(v, Y)] == 1:
+            # 'v' no longer witnesses F[v] -> Y
+            H[(F[v], Y)] -= 1
+
+    C[X].remove(u)
+    C[Y].append(u)
+
+
 def equitable_color(G, num_colors):
     """Provides equitable (r + 1)-coloring for nodes of G in O(r * n^2) time
      if deg(G) <= r. The algorithm is described in [1]_.
@@ -104,6 +130,7 @@ def equitable_color(G, num_colors):
         G.add_edges_from(K.edges)
 
     n = len(G.nodes)
+    colors = list(range(num_colors))
 
     # Starting the algorithm.
     L = {node: list(G.neighbors(node)) for node in G.nodes}
@@ -116,7 +143,7 @@ def equitable_color(G, num_colors):
     for node, color in F:
         C[color].append(node)
 
-    # Currently all nodes witness everything.
+    # Currently all nodes witness all edges.
     H = {(c1, c2): s for c1 in range(num_colors) for c2 in range(num_colors)}
 
     # The neighborhood is empty initially.
@@ -125,14 +152,55 @@ def equitable_color(G, num_colors):
     # Start of algorithm.
     for u in G.nodes:
         for v in G.neighbors(u):
-            if F[u] != F[v]:
-                N[(u, F[v])] += 1
-                N[(v, F[u])] += 1
+            L_[u].append(v)
 
+            N[(u, F[v])] += 1
+            N[(v, F[u])] += 1
+
+            if F[u] != F[v]:
                 # Were 'u' and 'v' witnesses for F[u] -> F[v] or F[v] -> F[u]?
                 H[F[v], F[u]] -= 1  # v cannot witness an edge between F[v], F[u]
                 H[F[u], F[v]] -= 1  # u cannot witness an edge between F[u], F[v]
+
+        if N[(u, F[u])] != 0:
+            # Find the first color where 'u' does not have any neighbors.
+            Y = [k for k in colors if N[(u, k)] == 0][0]
+            X = F[u]
+            change_color(u, X, Y, N, H, F, C)
+
+            # Procedure P
+
+            V_minus = X
+            V_plus = Y
+
+            A_cal = set()
+            T_cal = defaultdict(lambda: [])
+            R_cal = []
+
+            # BFS to determine A_cal, i.e. colors reachable from V-
+            reachable = [V_minus]
+            idx = 0
+            while idx < len(reachable):
+                pop = reachable[idx]
+                idx += 1
+
+                A_cal.add(pop)
+                R_cal.append(pop)
+
+                next_layer = [k for k in colors if H[(V_minus, k)] > 0]
+                for dst in next_layer:
+                    # Record that pop can reach dst
+                    T_cal[dst].append(pop)
+
+                reachable.extend([x for x in next_layer if x not in A_cal])
+
+            if V_plus in A_cal:
+                # Easy case: V+ is in A_cal
+                # Move one node from V+ to V- going through T_cal.
+                # TODO
+                pass
             else:
+                # Rougher case
                 pass
 
 
