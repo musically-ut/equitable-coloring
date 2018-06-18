@@ -174,7 +174,7 @@ def equitable_color(G, num_colors):
             V_plus = Y
 
             A_cal = set()
-            T_cal = defaultdict(lambda: [])
+            T_cal = {}
             R_cal = []
 
             # BFS to determine A_cal, i.e. colors reachable from V-
@@ -187,20 +187,30 @@ def equitable_color(G, num_colors):
                 A_cal.add(pop)
                 R_cal.append(pop)
 
-                next_layer = [k for k in colors if H[(V_minus, k)] > 0]
-                for dst in next_layer:
-                    # Record that pop can reach dst
-                    T_cal[dst].append(pop)
+                # TODO: Checking whether a color has been visited can
+                # be made faster by using a look-up table instead of
+                # testing for membership in a set by a logarithmic factor.
+                next_layer = [k for k in colors
+                              if H[(V_minus, k)] > 0 and k not in A_cal]
 
-                reachable.extend([x for x in next_layer if x not in A_cal])
+                for dst in next_layer:
+                    # Record that `dst` can reach `pop`
+                    T_cal[dst] = pop
+
+                reachable.extend(next_layer)
 
             if V_plus in A_cal:
                 # Easy case: V+ is in A_cal
-                # Move one node from V+ to V- going through T_cal.
-                # TODO
-                pass
+                # Move one node from V+ to V- using T_cal to find the parents.
+                X = V_plus
+                while X != V_minus:
+                    Y = T_cal[X]
+                    # Move _any_ witness from X to Y = T_cal[X]
+                    w = [x for x in C[X] if N[(x, Y)] == 0][0]
+                    change_color(w, X, Y, N, H, F, C)
+                    X = Y
+
+                # assert is_equitable coloring
             else:
-                # Rougher case
+                # Tougher case
                 pass
-
-
