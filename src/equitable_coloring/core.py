@@ -58,6 +58,17 @@ def change_color(u, X, Y, N, H, F, C):
     C[Y].append(u)
 
 
+def move_witnesses(src_color, dst_color, N, H, F, C, T_cal):
+    """Move witness along a path from src_color to dst_color."""
+    X = src_color
+    while X != dst_color:
+        Y = T_cal[X]
+        # Move _any_ witness from X to Y = T_cal[X]
+        w = [x for x in C[X] if N[(x, Y)] == 0][0]
+        change_color(w, X, Y, N, H, F, C)
+        X = Y
+
+
 def equitable_color(G, num_colors):
     """Provides equitable (r + 1)-coloring for nodes of G in O(r * n^2) time
      if deg(G) <= r. The algorithm is described in [1]_.
@@ -199,22 +210,51 @@ def equitable_color(G, num_colors):
 
                 reachable.extend(next_layer)
 
+            # Variables for the algorithm
+            b = s * (num_colors - len(A_cal))
+
             if V_plus in A_cal:
                 # Easy case: V+ is in A_cal
                 # Move one node from V+ to V- using T_cal to find the parents.
-                X = V_plus
-                while X != V_minus:
-                    Y = T_cal[X]
-                    # Move _any_ witness from X to Y = T_cal[X]
-                    w = [x for x in C[X] if N[(x, Y)] == 0][0]
-                    change_color(w, X, Y, N, H, F, C)
-                    X = Y
-                # assert is_equitable coloring
+                move_witnesses(V_plus, V_minus, N, H, F, C, T_cal)
             else:
                 # If there is a solo edge, we can resolve the situation by
                 # moving witnesses from B to A, making G[A] equitable and then
                 # recursively balancing G[B - w] with a different V_minus and
                 # but the same V_plus.
+
+                terminal_sets_found = 0
+
+                for W_1 in R[::-1]:
+
+                    for v in C[W_1]:
+                        w, X, X_ = None, None, None
+
+                        for U in colors:
+                            if N[(v, U)] == 0 and U in A_cal:
+                                X = U
+
+                            if N[(v, U)] == 1 and U not in A_cal:
+                                X_ = U
+
+                        if X is not None and X_ is not None:
+                            w = v
+
+                            # Finding the solo neighbor of w in X_
+                            y_candidates = [node for node in G.neighbors(w) if node in C[X_]]
+
+                            if len(y_candidates) == 0:
+                                # Have found a terminal set.
+                                terminal_sets_found += 1
+                            else:
+                                # Move the solo-neighbor to the graph G[A]
+                                # and make the coloring a-equitable.
+                                # TODO
+                                pass
+
+                        # if terminal_sets_found # TODO
+
+
 
                 # Otherwise, construct the maximal independent set and find
                 # a pair of z_1, z_2 as in Case II.
