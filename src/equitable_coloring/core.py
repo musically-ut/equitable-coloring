@@ -209,8 +209,13 @@ def equitable_color(G, num_colors):
                     w = [x for x in C[X] if N[(x, Y)] == 0][0]
                     change_color(w, X, Y, N, H, F, C)
                     X = Y
-
                 # assert is_equitable coloring
             else:
-                # Tougher case
+                # If there is a solo edge, we can resolve the situation by
+                # moving witnesses from B to A, making G[A] equitable and then
+                # recursively balancing G[B - w] with a different V_minus and
+                # but the same V_plus.
+
+                # Otherwise, construct the maximal independent set and find
+                # a pair of z_1, z_2 as in Case II.
                 pass
