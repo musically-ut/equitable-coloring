@@ -1,5 +1,4 @@
 import networkx as nx
-import numpy as np
 from collections import defaultdict
 
 
@@ -32,7 +31,7 @@ def is_equitable(G, coloring):
     return abs(a - b) <= 1
 
 
-def change_color(u, X, Y, N, H, F, C):
+def change_color(u, X, Y, N, H, F, C, G):
     """Change the color of 'u' from X to Y and update N, H, F, C."""
     # Change the class of 'u' from X to Y
     F[u] = Y
@@ -58,15 +57,238 @@ def change_color(u, X, Y, N, H, F, C):
     C[Y].append(u)
 
 
-def move_witnesses(src_color, dst_color, N, H, F, C, T_cal):
+def move_witnesses(src_color, dst_color, N, H, F, C, T_cal, G):
     """Move witness along a path from src_color to dst_color."""
     X = src_color
     while X != dst_color:
         Y = T_cal[X]
         # Move _any_ witness from X to Y = T_cal[X]
         w = [x for x in C[X] if N[(x, Y)] == 0][0]
-        change_color(w, X, Y, N, H, F, C)
+        change_color(w, X, Y, N=N, H=H, F=F, C=C, G=G)
         X = Y
+
+
+def pad_graph(G, num_colors):
+    """Add a disconnected complete clique K_p such that the number of nodes in
+    the graph becomes a multiple of `num_colors`.
+
+    Returns the number of nodes with each color.
+    """
+
+    n_ = len(G)
+    r = num_colors - 1
+
+    # Ensure that the number of nodes in G is a multiple of (r + 1)
+    s = n_ // (r + 1)
+    if n_ != s * (r + 1):
+        p = (r + 1) - n_ % (r + 1)
+        s += 1
+
+        # Complete graph K_p between (imaginary) nodes [n_, ... , n_ + p]
+        K = nx.relabel_nodes(nx.complete_graph(p),
+                             {idx: idx + n_ for idx in range(p)})
+        G.add_edges_from(K.edges)
+
+    return s
+
+
+def procedure_P(G, V_minus, V_plus, N, H, F, C, excluded_colors=None):
+    """Procedure P as described in the paper."""
+
+    if excluded_colors is None:
+        excluded_colors = set()
+
+    A_cal = set()
+    T_cal = {}
+    R_cal = []
+
+    # BFS to determine A_cal, i.e. colors reachable from V-
+    reachable = [V_minus]
+    idx = 0
+    while idx < len(reachable):
+        pop = reachable[idx]
+        idx += 1
+
+        A_cal.add(pop)
+        R_cal.append(pop)
+
+        # TODO: Checking whether a color has been visited can
+        # be made faster by using a look-up table instead of
+        # testing for membership in a set by a logarithmic factor.
+        next_layer = []
+        for k in C.keys():
+            if H[(k, pop)] > 0 and k not in A_cal and k not in excluded_colors:
+                next_layer.append(k)
+
+        for dst in next_layer:
+            # Record that `dst` can reach `pop`
+            T_cal[dst] = pop
+
+        reachable.extend(next_layer)
+
+    # Variables for the algorithm
+    s = len(G) / len(C)
+    b = s * (len(C) - len(A_cal))
+
+    if V_plus in A_cal:
+        # Easy case: V+ is in A_cal
+        # Move one node from V+ to V- using T_cal to find the parents.
+        move_witnesses(V_plus, V_minus, N, H, F, C, T_cal)
+    else:
+        # If there is a solo edge, we can resolve the situation by
+        # moving witnesses from B to A, making G[A] equitable and then
+        # recursively balancing G[B - w] with a different V_minus and
+        # but the same V_plus.
+
+        A_0 = set()
+        A_cal_0 = set()
+        num_terminal_sets_found = 0
+
+        for W_1 in R_cal[::-1]:
+
+            for v in C[W_1]:
+                w, X, X_prime = None, None, None
+
+                for U in C.keys():
+                    if N[(v, U)] == 0 and U in A_cal:
+                        X = U
+
+                    if N[(v, U)] == 1 and U not in A_cal:
+                        X_prime = U
+
+                # TODO: Should we try to look for a 'y' for _each_ X'?
+                if X is not None and X_prime is not None:
+                    w = v
+
+                    # Finding the solo neighbor of w in X_prime
+                    y_candidates = [node for node in G.neighbors(w)
+                                    if node in C[X_prime]]
+
+                    if len(y_candidates) == 0:
+                        # Have found a terminal set.
+                        A_cal_0.add(W_1)
+                        A_0.update(C[W_1])
+                        num_terminal_sets_found += 1
+                    else:
+                        # Move the solo-neighbor to the graph G[A]
+                        # and make the coloring a-equitable.
+                        y = y_candidates[0]
+                        W = W_1
+
+                        move_witnesses(X, V_minus,
+                                       N=N, H=H, F=F, C=C, T_cal=T_cal, G=G)
+                        change_color(y, X_prime, W, N=N, H=H, F=F, C=C, G=G)
+
+                        # Then call the procedure on G[B - y]
+                        G_subgraph = G.subgraph([node for node in G.nodes
+                                                 if F[node] not in A_cal])
+
+                        procedure_P(G_subgraph,
+                                    V_minus=X_prime, V_plus=V_plus,
+                                    N=N, H=H, C=C, F=F,
+                                    excluded_colors=excluded_colors.union(A_cal))
+                        made_equitable = True
+                        break
+                else:
+                    A_cal_0.add(W_1)
+                    A_0.update(C[W_1])
+                    num_terminal_sets_found += 1
+
+            if num_terminal_sets_found == b:
+                # Otherwise, construct the maximal independent set and find
+                # a pair of z_1, z_2 as in Case II.
+
+                # BFS to determine B_cal': the set of colors reachable from V+
+                B_cal_prime = set()
+                T_cal_prime = {}
+
+                reachable = [V_plus]
+                idx = 0
+                while idx < len(reachable):
+                    pop = reachable[idx]
+                    idx += 1
+
+                    B_cal_prime.append(pop)
+
+                    next_layer = [k for k in C.keys()
+                                  if H[(pop, k)] > 0 and k not in B_cal_prime]
+
+                    for dst in next_layer:
+                        T_cal_prime[pop] = dst
+
+                    reachable.extend(next_layer)
+
+                # Construct the independent set of G[B']
+                I_set = set()
+                I_covered = set()
+                W_covering = {}
+
+                B_prime = [node for k in B_cal_prime for node in C[k]]
+
+                # Add the nodes in V_plus to I first.
+                for z in C[V_plus] + B_prime:
+                    if z in I_covered or F[z] in B_cal_prime:
+                        continue
+
+                    I_set.add(z)
+                    I_covered.add([z])
+                    I_covered.update([nbr for nbr in G.neighbor(z)])
+
+                    for w in G.neighbor(z):
+                        if F[w] in A_cal_0 and N[(z, F[w])] == 1:
+                            if w not in W_covering:
+                                W_covering[w] = z
+                            else:
+                                # Found z1, z2 which have the same solo
+                                # neighbor in some W
+                                z_1 = W_covering[z]
+                                # z_2 = z
+
+                                Z = F[z_1]
+                                W = F[w]
+
+                                # shift nodes along W, V-
+                                move_witnesses(W, V_minus,
+                                               N=N, H=H, F=F, C=C,
+                                               T_cal=T_cal, G=G)
+
+                                # shift nodes along V+ to Z
+                                move_witnesses(V_plus, Z,
+                                               N=N, H=H, F=F, C=C,
+                                               T_cal=T_cal_prime, G=G)
+
+                                # change color of z_1 to W
+                                change_color(z_1, Z, W,
+                                             N=N, H=H, F=F, C=C, G=G)
+
+                                # change color of w to some color in B_cal
+                                W_plus = [k for k in C.keys()
+                                          if N[(w, k)] == 0][0]
+                                change_color(w, W, W_plus,
+                                             N=N, H=H, F=F, C=C, G=G)
+
+                                # recurse with G[B \cup W*]
+                                G_subgraph = G.subgraph([
+                                    node for node in G.nodes
+                                    if F[node] in B_cal_prime or F[node] == W
+                                ])
+                                excluded_colors.update([
+                                    k for k in C.keys()
+                                    if k != W and k not in B_cal_prime
+                                ])
+                                procedure_P(G_subgraph,
+                                            V_minus=W, V_plus=W_plus,
+                                            N=N, H=H, C=C, F=F,
+                                            excluded_colors=excluded_colors)
+
+                                made_equitable = True
+                                break
+                else:
+                    assert False, "Must find a w which is the solo neighbor " \
+                                  "of two vertices in B_cal_prime."
+
+            if made_equitable:
+                break
 
 
 def equitable_color(G, num_colors):
@@ -116,7 +338,6 @@ def equitable_color(G, num_colors):
     G = nx.relabel_nodes(G, nodes_to_int, copy=True)
 
     # Basic graph statistics and sanity check.
-    n_ = len(G)
     r_ = max([G.degree(node) for node in G.nodes], default=0)
 
     if r_ >= num_colors:
@@ -125,26 +346,11 @@ def equitable_color(G, num_colors):
             .format(r_, r_ + 1, num_colors)
         )
 
-    # Irrespective of what the maximum degree of the graph is, we will set r to
-    # be the maximum possible degree.
-    r = num_colors - 1
-
     # Ensure that the number of nodes in G is a multiple of (r + 1)
-    s = n_ // (r + 1)
-    if n_ != s * (r + 1):
-        p = (r + 1) - n_ % (r + 1)
-        s += 1
-
-        # Complete graph K_p between (imaginary) nodes [n_, ... , n_ + p]
-        K = nx.relabel_nodes(nx.complete_graph(p),
-                             {idx: idx + n_ for idx in range(p)})
-        G.add_edges_from(K.edges)
-
-    n = len(G.nodes)
-    colors = list(range(num_colors))
+    s = pad_graph(G, num_colors)
 
     # Starting the algorithm.
-    L = {node: list(G.neighbors(node)) for node in G.nodes}
+    # L = {node: list(G.neighbors(node)) for node in G.nodes}
     L_ = defaultdict(lambda: [])
 
     # Arbitrary equitable allocation of colors to nodes.
@@ -175,87 +381,12 @@ def equitable_color(G, num_colors):
 
         if N[(u, F[u])] != 0:
             # Find the first color where 'u' does not have any neighbors.
-            Y = [k for k in colors if N[(u, k)] == 0][0]
+            Y = [k for k in C.keys() if N[(u, k)] == 0][0]
             X = F[u]
-            change_color(u, X, Y, N, H, F, C)
+            change_color(u, X, Y, N=N, H=H, F=F, C=C, G=G)
 
             # Procedure P
+            procedure_P(G, V_minus=X, V_plus=Y,
+                        N=N, H=H, F=F, C=C)
 
-            V_minus = X
-            V_plus = Y
-
-            A_cal = set()
-            T_cal = {}
-            R_cal = []
-
-            # BFS to determine A_cal, i.e. colors reachable from V-
-            reachable = [V_minus]
-            idx = 0
-            while idx < len(reachable):
-                pop = reachable[idx]
-                idx += 1
-
-                A_cal.add(pop)
-                R_cal.append(pop)
-
-                # TODO: Checking whether a color has been visited can
-                # be made faster by using a look-up table instead of
-                # testing for membership in a set by a logarithmic factor.
-                next_layer = [k for k in colors
-                              if H[(V_minus, k)] > 0 and k not in A_cal]
-
-                for dst in next_layer:
-                    # Record that `dst` can reach `pop`
-                    T_cal[dst] = pop
-
-                reachable.extend(next_layer)
-
-            # Variables for the algorithm
-            b = s * (num_colors - len(A_cal))
-
-            if V_plus in A_cal:
-                # Easy case: V+ is in A_cal
-                # Move one node from V+ to V- using T_cal to find the parents.
-                move_witnesses(V_plus, V_minus, N, H, F, C, T_cal)
-            else:
-                # If there is a solo edge, we can resolve the situation by
-                # moving witnesses from B to A, making G[A] equitable and then
-                # recursively balancing G[B - w] with a different V_minus and
-                # but the same V_plus.
-
-                terminal_sets_found = 0
-
-                for W_1 in R[::-1]:
-
-                    for v in C[W_1]:
-                        w, X, X_ = None, None, None
-
-                        for U in colors:
-                            if N[(v, U)] == 0 and U in A_cal:
-                                X = U
-
-                            if N[(v, U)] == 1 and U not in A_cal:
-                                X_ = U
-
-                        if X is not None and X_ is not None:
-                            w = v
-
-                            # Finding the solo neighbor of w in X_
-                            y_candidates = [node for node in G.neighbors(w) if node in C[X_]]
-
-                            if len(y_candidates) == 0:
-                                # Have found a terminal set.
-                                terminal_sets_found += 1
-                            else:
-                                # Move the solo-neighbor to the graph G[A]
-                                # and make the coloring a-equitable.
-                                # TODO
-                                pass
-
-                        # if terminal_sets_found # TODO
-
-
-
-                # Otherwise, construct the maximal independent set and find
-                # a pair of z_1, z_2 as in Case II.
-                pass
+    return {int_to_nodes[x]: F[x] for x in int_to_nodes}
