@@ -36,7 +36,7 @@ def is_equitable(G, coloring):
     return abs(a - b) <= 1
 
 
-def change_color(u, X, Y, N, H, F, C, G):
+def change_color(u, X, Y, N, H, F, C, L):
     """Change the color of 'u' from X to Y and update N, H, F, C."""
     # Change the class of 'u' from X to Y
     F[u] = Y
@@ -45,7 +45,7 @@ def change_color(u, X, Y, N, H, F, C, G):
     H[(X, Y)] -= 1
     H[(Y, X)] += 1
 
-    for v in G.neighbors(u):
+    for v in L[u]:
         # 'v' has lost a neighbor in X and gained one in Y
         N[(v, X)] -= 1
         N[(v, Y)] += 1
@@ -62,14 +62,14 @@ def change_color(u, X, Y, N, H, F, C, G):
     C[Y].append(u)
 
 
-def move_witnesses(src_color, dst_color, N, H, F, C, T_cal, G):
+def move_witnesses(src_color, dst_color, N, H, F, C, T_cal, L):
     """Move witness along a path from src_color to dst_color."""
     X = src_color
     while X != dst_color:
         Y = T_cal[X]
         # Move _any_ witness from X to Y = T_cal[X]
         w = [x for x in C[X] if N[(x, Y)] == 0][0]
-        change_color(w, X, Y, N=N, H=H, F=F, C=C, G=G)
+        change_color(w, X, Y, N=N, H=H, F=F, C=C, L=L)
         X = Y
 
 
@@ -99,7 +99,7 @@ def pad_graph(G, num_colors):
     return s
 
 
-def procedure_P(G, V_minus, V_plus, N, H, F, C, excluded_colors=None):
+def procedure_P(G, V_minus, V_plus, N, H, F, C, L, excluded_colors=None):
     """Procedure P as described in the paper."""
 
     if excluded_colors is None:
@@ -140,7 +140,7 @@ def procedure_P(G, V_minus, V_plus, N, H, F, C, excluded_colors=None):
     if V_plus in A_cal:
         # Easy case: V+ is in A_cal
         # Move one node from V+ to V- using T_cal to find the parents.
-        move_witnesses(V_plus, V_minus, N=N, H=H, F=F, C=C, T_cal=T_cal, G=G)
+        move_witnesses(V_plus, V_minus, N=N, H=H, F=F, C=C, T_cal=T_cal, L=L)
     else:
         # If there is a solo edge, we can resolve the situation by
         # moving witnesses from B to A, making G[A] equitable and then
@@ -168,7 +168,7 @@ def procedure_P(G, V_minus, V_plus, N, H, F, C, excluded_colors=None):
                     w = v
 
                     # Finding the solo neighbor of w in X_prime
-                    y_candidates = [node for node in G.neighbors(w)
+                    y_candidates = [node for node in L[w]
                                     if node in C[X_prime]]
 
                     if len(y_candidates) == 0:
@@ -183,8 +183,8 @@ def procedure_P(G, V_minus, V_plus, N, H, F, C, excluded_colors=None):
                         W = W_1
 
                         move_witnesses(X, V_minus,
-                                       N=N, H=H, F=F, C=C, T_cal=T_cal, G=G)
-                        change_color(y, X_prime, W, N=N, H=H, F=F, C=C, G=G)
+                                       N=N, H=H, F=F, C=C, T_cal=T_cal, L=L)
+                        change_color(y, X_prime, W, N=N, H=H, F=F, C=C, L=L)
 
                         # Then call the procedure on G[B - y]
                         G_subgraph = G.subgraph([node for node in G.nodes
@@ -192,7 +192,7 @@ def procedure_P(G, V_minus, V_plus, N, H, F, C, excluded_colors=None):
 
                         procedure_P(G_subgraph,
                                     V_minus=X_prime, V_plus=V_plus,
-                                    N=N, H=H, C=C, F=F,
+                                    N=N, H=H, C=C, F=F, L=L,
                                     excluded_colors=excluded_colors.union(A_cal))
                         made_equitable = True
                         break
@@ -241,7 +241,7 @@ def procedure_P(G, V_minus, V_plus, N, H, F, C, excluded_colors=None):
                     I_covered.add([z])
                     I_covered.update([nbr for nbr in G.neighbor(z)])
 
-                    for w in G.neighbor(z):
+                    for w in L[z]:
                         if F[w] in A_cal_0 and N[(z, F[w])] == 1:
                             if w not in W_covering:
                                 W_covering[w] = z
@@ -257,22 +257,22 @@ def procedure_P(G, V_minus, V_plus, N, H, F, C, excluded_colors=None):
                                 # shift nodes along W, V-
                                 move_witnesses(W, V_minus,
                                                N=N, H=H, F=F, C=C,
-                                               T_cal=T_cal, G=G)
+                                               T_cal=T_cal, L=L)
 
                                 # shift nodes along V+ to Z
                                 move_witnesses(V_plus, Z,
                                                N=N, H=H, F=F, C=C,
-                                               T_cal=T_cal_prime, G=G)
+                                               T_cal=T_cal_prime, L=L)
 
                                 # change color of z_1 to W
                                 change_color(z_1, Z, W,
-                                             N=N, H=H, F=F, C=C, G=G)
+                                             N=N, H=H, F=F, C=C, L=L)
 
                                 # change color of w to some color in B_cal
                                 W_plus = [k for k in C.keys()
                                           if N[(w, k)] == 0][0]
                                 change_color(w, W, W_plus,
-                                             N=N, H=H, F=F, C=C, G=G)
+                                             N=N, H=H, F=F, C=C, L=L)
 
                                 # recurse with G[B \cup W*]
                                 G_subgraph = G.subgraph([
@@ -285,7 +285,7 @@ def procedure_P(G, V_minus, V_plus, N, H, F, C, excluded_colors=None):
                                 ])
                                 procedure_P(G_subgraph,
                                             V_minus=W, V_plus=W_plus,
-                                            N=N, H=H, C=C, F=F,
+                                            N=N, H=H, C=C, F=F, L=L,
                                             excluded_colors=excluded_colors)
 
                                 made_equitable = True
@@ -390,10 +390,10 @@ def equitable_color(G, num_colors):
             # Find the first color where 'u' does not have any neighbors.
             Y = [k for k in C.keys() if N[(u, k)] == 0][0]
             X = F[u]
-            change_color(u, X, Y, N=N, H=H, F=F, C=C, G=G)
+            change_color(u, X, Y, N=N, H=H, F=F, C=C, L=L_)
 
             # Procedure P
             procedure_P(G, V_minus=X, V_plus=Y,
-                        N=N, H=H, F=F, C=C)
+                        N=N, H=H, F=F, C=C, L=L_)
 
     return {int_to_nodes[x]: F[x] for x in int_to_nodes}
