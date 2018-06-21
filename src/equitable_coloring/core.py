@@ -2,6 +2,11 @@ import networkx as nx
 from collections import defaultdict
 
 
+def max_degree(G):
+    """Get the maximum degree of any node in G."""
+    return max([G.degree(node) for node in G.nodes])
+
+
 def is_coloring(G, coloring):
     """Determine if the coloring is a valid coloring for the graph G."""
     # Verify that the coloring is valid.
@@ -72,6 +77,8 @@ def pad_graph(G, num_colors):
     """Add a disconnected complete clique K_p such that the number of nodes in
     the graph becomes a multiple of `num_colors`.
 
+    Assumes that the graph's nodes are labelled using integers.
+
     Returns the number of nodes with each color.
     """
 
@@ -133,7 +140,7 @@ def procedure_P(G, V_minus, V_plus, N, H, F, C, excluded_colors=None):
     if V_plus in A_cal:
         # Easy case: V+ is in A_cal
         # Move one node from V+ to V- using T_cal to find the parents.
-        move_witnesses(V_plus, V_minus, N, H, F, C, T_cal)
+        move_witnesses(V_plus, V_minus, N=N, H=H, F=F, C=C, T_cal=T_cal, G=G)
     else:
         # If there is a solo edge, we can resolve the situation by
         # moving witnesses from B to A, making G[A] equitable and then
@@ -357,7 +364,7 @@ def equitable_color(G, num_colors):
     F = {node: idx % num_colors for idx, node in enumerate(G.nodes)}
 
     C = defaultdict(lambda: [])
-    for node, color in F:
+    for node, color in F.items():
         C[color].append(node)
 
     # Currently all nodes witness all edges.
