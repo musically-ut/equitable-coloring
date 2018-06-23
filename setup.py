@@ -62,7 +62,12 @@ setup(
     ],
     install_requires=[
         'networkx>=2.0'
-        # eg: 'aspectlib==1.1.1', 'six>=1.7',
+    ],
+    setup_requires=[
+        'pytest-runner'
+    ],
+    tests_require=[
+        'pytest', 'pytest-cov'
     ],
     extras_require={
         # eg:
