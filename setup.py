@@ -58,7 +58,7 @@ setup(
         'Topic :: Utilities',
     ],
     keywords=[
-        # eg: 'keyword1', 'keyword2', 'keyword3',
+        'graph', 'coloring', 'equitable', 'polynomial-time', 'algorithm'
     ],
     install_requires=[
         'networkx>=2.0'
