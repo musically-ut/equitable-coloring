@@ -1,5 +1,6 @@
-import networkx as nx
 from collections import defaultdict
+
+import networkx as nx
 
 
 def max_degree(G):
@@ -345,7 +346,10 @@ def equitable_color(G, num_colors):
     G = nx.relabel_nodes(G, nodes_to_int, copy=True)
 
     # Basic graph statistics and sanity check.
-    r_ = max([G.degree(node) for node in G.nodes], default=0)
+    if len(G.nodes) > 0:
+        r_ = max([G.degree(node) for node in G.nodes])
+    else:
+        r_ = 0
 
     if r_ >= num_colors:
         raise nx.NetworkXAlgorithmError(
