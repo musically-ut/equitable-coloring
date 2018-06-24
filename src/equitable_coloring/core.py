@@ -49,12 +49,16 @@ def is_equitable(G, coloring, num_colors=None):
 
 def change_color(u, X, Y, N, H, F, C, L):
     """Change the color of 'u' from X to Y and update N, H, F, C."""
+    assert F[u] == X and X != Y
+
     # Change the class of 'u' from X to Y
     F[u] = Y
 
-    # 'u' witnesses and edge from Y -> X instead of from X -> Y now.
-    H[(X, Y)] -= 1
-    H[(Y, X)] += 1
+    for k in C.keys():
+        # 'u' witnesses an edge from k -> Y instead of from k -> X now.
+        if N[u, k] == 0:
+            H[(X, k)] -= 1
+            H[(Y, k)] += 1
 
     for v in L[u]:
         # 'v' has lost a neighbor in X and gained one in Y
@@ -388,17 +392,30 @@ def equitable_color(G, num_colors):
     N = {(node, color): 0 for node in G.nodes for color in range(num_colors)}
 
     # Start of algorithm.
-    for u in G.nodes:
-        for v in G.neighbors(u):
+    edges_seen = set()
+
+    for u in sorted(G.nodes):
+        for v in sorted(G.neighbors(u)):
+
+            # Do not double count edges if (v, u) has already been seen.
+            if (v, u) in edges_seen:
+                continue
+
+            edges_seen.add((u, v))
+
             L_[u].append(v)
+            L_[v].append(u)
 
             N[(u, F[v])] += 1
             N[(v, F[u])] += 1
 
             if F[u] != F[v]:
                 # Were 'u' and 'v' witnesses for F[u] -> F[v] or F[v] -> F[u]?
-                H[F[v], F[u]] -= 1  # v cannot witness an edge between F[v], F[u]
-                H[F[u], F[v]] -= 1  # u cannot witness an edge between F[u], F[v]
+                if N[(u, F[v])] == 1:
+                    H[F[u], F[v]] -= 1  # u cannot witness an edge between F[u], F[v]
+
+                if N[(v, F[u])] == 1:
+                    H[F[v], F[u]] -= 1  # v cannot witness an edge between F[v], F[u]
 
         if N[(u, F[u])] != 0:
             # Find the first color where 'u' does not have any neighbors.

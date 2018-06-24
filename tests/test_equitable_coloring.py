@@ -46,3 +46,14 @@ def test_equitable_color_large():
     G = nx.fast_gnp_random_graph(100, 0.1, seed=42)
     coloring = equitable_color(G, max_degree(G) + 1)
     assert is_equitable(G, coloring)
+
+
+def test_equitable_color_coverage():
+    N = 500
+    for idx in range(0, 40, 20):
+        p = idx * 0.01
+        seed = idx * 9 + 42
+        G = nx.fast_gnp_random_graph(N, p, seed=seed)
+        coloring = equitable_color(G, max_degree(G) + 1)
+        assert is_equitable(G, coloring), \
+            "Failed for N = {}, p = {}, seed = {}".format(N, p, seed)
