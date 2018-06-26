@@ -1,6 +1,7 @@
 from collections import defaultdict
 
 import networkx as nx
+import pytest
 
 from equitable_coloring import equitable_color
 from equitable_coloring.core import check_state
@@ -32,6 +33,13 @@ def test_is_equitable():
     coloring[5] = 1
     assert is_coloring(G, coloring)
     assert not is_equitable(G, coloring)
+
+
+def test_num_colors():
+    G = nx.Graph()
+    G.add_edges_from([(0, 1), (0, 2), (0, 3)])
+    with pytest.raises(nx.NetworkXAlgorithmError):
+        equitable_color(G, 2)
 
 
 def test_equitable_color():
