@@ -1,5 +1,3 @@
-from collections import defaultdict
-
 import networkx as nx
 import pytest
 
@@ -7,6 +5,9 @@ from equitable_coloring import equitable_color
 from equitable_coloring.core import check_state
 from equitable_coloring.core import is_coloring
 from equitable_coloring.core import is_equitable
+from equitable_coloring.core import make_C_from_F
+from equitable_coloring.core import make_H_from_C_N
+from equitable_coloring.core import make_N_from_L_C
 from equitable_coloring.core import max_degree
 from equitable_coloring.core import procedure_P
 
@@ -72,7 +73,7 @@ def test_equitable_color_large():
 #         "Failed for N = {}, p = {}, seed = {}".format(N, p, seed)
 
 
-def test_hard_case():
+def test_case_V_plus_not_in_A_cal():
     # Hand crafted case to avoid the easy case.
     L = {
         0: [2, 5],
@@ -103,16 +104,53 @@ def test_hard_case():
         8: 2,
     }
 
-    C = defaultdict(lambda: [])
-    for node, color in F.items():
-        C[color].append(node)
-
-    N = {(node, color): sum(1 for v in L[node] if v in C[color])
-         for node in range(9) for color in range(3)}
-
-    H = {(c1, c2): sum(1 for node in C[c1] if N[(node, c2)] == 0)
-         for c1 in C.keys() for c2 in C.keys()}
+    C = make_C_from_F(F)
+    N = make_N_from_L_C(L, C)
+    H = make_H_from_C_N(C, N)
 
     procedure_P(V_minus=0, V_plus=1, N=N, H=H, F=F, C=C, L=L)
+    check_state(L=L, N=N, H=H, F=F, C=C)
 
-    check_state(N=N, H=H, F=F, C=C)
+
+def test_cast_no_solo():
+    L = {
+        0: [8, 9],
+        1: [10, 11],
+
+        2: [8],
+        3: [9],
+        4: [10, 11],
+
+        5: [8],
+        6: [9],
+        7: [10, 11],
+
+        8: [0, 2, 5],
+        9: [0, 3, 6],
+        10: [1, 4, 7],
+        11: [1, 4, 7],
+    }
+    F = {
+        0: 0,
+        1: 0,
+
+        2: 2,
+        3: 2,
+        4: 2,
+
+        5: 3,
+        6: 3,
+        7: 3,
+
+        8: 1,
+        9: 1,
+        10: 1,
+        11: 1,
+    }
+
+    C = make_C_from_F(F)
+    N = make_N_from_L_C(L, C)
+    H = make_H_from_C_N(C, N)
+
+    procedure_P(V_minus=0, V_plus=1, N=N, H=H, F=F, C=C, L=L)
+    check_state(L=L, N=N, H=H, F=F, C=C)

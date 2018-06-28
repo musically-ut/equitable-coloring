@@ -67,7 +67,7 @@ setup(
         'pytest-runner'
     ],
     tests_require=[
-        'pytest', 'pytest-cov'
+        'pytest', 'pytest-cov', 'z3-solver',
     ],
     extras_require={
         # eg:

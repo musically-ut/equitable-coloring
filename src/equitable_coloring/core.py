@@ -3,11 +3,36 @@ from collections import defaultdict
 import networkx as nx
 
 
-def check_state(N, H, F, C):
+def check_state(L, N, H, F, C):
     s = len(C[0])
+    num_colors = len(C.keys())
+
+    assert all(u in L[v] for u in L.keys() for v in L[u])
+    assert all(F[u] != F[v] for u in L.keys() for v in L[u])
+    assert all(len(L[u]) < num_colors for u in L.keys())
     assert all(len(C[x]) == s for x in C)
     assert all(H[(c1, c2)] >= 0 for c1 in C.keys() for c2 in C.keys())
     assert all(N[(u, F[u])] == 0 for u in F.keys())
+
+
+def make_C_from_F(F):
+    C = defaultdict(lambda: [])
+    for node, color in F.items():
+        C[color].append(node)
+
+    return C
+
+
+def make_N_from_L_C(L, C):
+    nodes = L.keys()
+    colors = C.keys()
+    return {(node, color): sum(1 for v in L[node] if v in C[color])
+            for node in nodes for color in colors}
+
+
+def make_H_from_C_N(C, N):
+    return {(c1, c2): sum(1 for node in C[c1] if N[(node, c2)] == 0)
+            for c1 in C.keys() for c2 in C.keys()}
 
 
 def max_degree(G):
@@ -133,7 +158,9 @@ def procedure_P(V_minus, V_plus, N, H, F, C, L, excluded_colors=None):
 
     # BFS to determine A_cal, i.e. colors reachable from V-
     reachable = [V_minus]
+    marked = set(reachable)
     idx = 0
+
     while idx < len(reachable):
         pop = reachable[idx]
         idx += 1
@@ -146,13 +173,17 @@ def procedure_P(V_minus, V_plus, N, H, F, C, L, excluded_colors=None):
         # logarithmic factor.
         next_layer = []
         for k in C.keys():
-            if H[(k, pop)] > 0 and k not in A_cal and k not in excluded_colors:
+            if H[(k, pop)] > 0 and \
+                    k not in A_cal and \
+                    k not in excluded_colors and \
+                    k not in marked:
                 next_layer.append(k)
 
         for dst in next_layer:
             # Record that `dst` can reach `pop`
             T_cal[dst] = pop
 
+        marked.update(next_layer)
         reachable.extend(next_layer)
 
     # Variables for the algorithm
@@ -172,6 +203,7 @@ def procedure_P(V_minus, V_plus, N, H, F, C, L, excluded_colors=None):
         A_0 = set()
         A_cal_0 = set()
         num_terminal_sets_found = 0
+        made_equitable = False
 
         for W_1 in R_cal[::-1]:
 
@@ -216,10 +248,14 @@ def procedure_P(V_minus, V_plus, N, H, F, C, L, excluded_colors=None):
                                         excluded_colors=excluded_colors.union(A_cal))
                             made_equitable = True
                             break
+
                 else:
                     A_cal_0.add(W_1)
                     A_0.update(C[W_1])
                     num_terminal_sets_found += 1
+
+                if made_equitable:
+                    break
 
             if num_terminal_sets_found == b:
                 # Otherwise, construct the maximal independent set and find
@@ -230,6 +266,7 @@ def procedure_P(V_minus, V_plus, N, H, F, C, L, excluded_colors=None):
                 T_cal_prime = {}
 
                 reachable = [V_plus]
+                marked = set(reachable)
                 idx = 0
                 while idx < len(reachable):
                     pop = reachable[idx]
@@ -237,12 +274,17 @@ def procedure_P(V_minus, V_plus, N, H, F, C, L, excluded_colors=None):
 
                     B_cal_prime.append(pop)
 
+                    # No need to check for excluded_colors here because
+                    # they only exclude colors from A_cal
                     next_layer = [k for k in C.keys()
-                                  if H[(pop, k)] > 0 and k not in B_cal_prime]
+                                  if H[(pop, k)] > 0 and
+                                  k not in B_cal_prime and
+                                  k not in marked]
 
                     for dst in next_layer:
                         T_cal_prime[pop] = dst
 
+                    marked.update(next_layer)
                     reachable.extend(next_layer)
 
                 # Construct the independent set of G[B']
@@ -372,7 +414,7 @@ def equitable_color(G, num_colors):
         )
 
     # Ensure that the number of nodes in G is a multiple of (r + 1)
-    s = pad_graph(G, num_colors)
+    pad_graph(G, num_colors)
 
     # Starting the algorithm.
     # L = {node: list(G.neighbors(node)) for node in G.nodes}
@@ -381,15 +423,13 @@ def equitable_color(G, num_colors):
     # Arbitrary equitable allocation of colors to nodes.
     F = {node: idx % num_colors for idx, node in enumerate(G.nodes)}
 
-    C = defaultdict(lambda: [])
-    for node, color in F.items():
-        C[color].append(node)
-
-    # Currently all nodes witness all edges.
-    H = {(c1, c2): s for c1 in range(num_colors) for c2 in range(num_colors)}
+    C = make_C_from_F(F)
 
     # The neighborhood is empty initially.
-    N = {(node, color): 0 for node in G.nodes for color in range(num_colors)}
+    N = make_N_from_L_C(L_, C)
+
+    # Currently all nodes witness all edges.
+    H = make_H_from_C_N(C, N)
 
     # Start of algorithm.
     edges_seen = set()
