@@ -68,6 +68,39 @@ def make_hard_prob(num_colors, num_nodes_each_color, a):
     return edge_vars, constrs, F
 
 
+def add_harder_constraints(edge_vars, constrs, F, a, a_prime):
+    """Add constraints which make the graph a test for Case 2 by removing
+    solo-edges which witness an edge in H[A_cal] for the last `a_prime`
+    colors."""
+
+    C = make_C_from_F(F)
+    num_colors = len(C)
+
+    for c1 in range(a - a_prime, a):
+        for u in C[c1]:
+            u_no_witness = []
+            # Either `u` doesn't witness an edge in H[A_cal]
+            for c2 in range(0, a):
+                if c2 != c1:
+                    # u had an edge to some color in c2
+                    u_no_witness.append(sum(edge_vars[u, v] for v in C[c2]) > 0)
+
+            # Or `u` does not have a solo neighbor `y` in B such that `y` has
+            # only one neighbor in `c1`
+            u_no_solo_solo = []
+            for c2 in range(a, num_colors):
+                for v in C[c2]:
+                    u_no_solo_solo.append(z3.Not(
+                        z3.And(
+                            z3.And(*[edge_vars[u, v2] == (0 if v2 != v else 1) for v2 in C[c2]]),  # N_X(u) == 1
+                            sum(edge_vars[v, u2] for u2 in C[c1]) == 1  # N_W(y) == 1
+                        )
+
+                    ))
+
+            constrs.append(z3.Or(z3.And(*u_no_witness), z3.And(*u_no_solo_solo)))
+
+
 def make_graph_from_solver(edge_vars, solver, F=None):
     """Solves the given problem and returns a networkX graph."""
     # solver = z3.Solver()
