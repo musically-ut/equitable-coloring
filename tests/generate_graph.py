@@ -87,18 +87,25 @@ def add_harder_constraints(edge_vars, constrs, F, a, a_prime):
 
             # Or `u` does not have a solo neighbor `y` in B such that `y` has
             # only one neighbor in `c1`
-            u_no_solo_solo = []
+            u_no_solo = []
             for c2 in range(a, num_colors):
                 for v in C[c2]:
-                    u_no_solo_solo.append(z3.Not(
-                        z3.And(
-                            z3.And(*[edge_vars[u, v2] == (0 if v2 != v else 1) for v2 in C[c2]]),  # N_X(u) == 1
-                            sum(edge_vars[v, u2] for u2 in C[c1]) == 1  # N_W(y) == 1
+                    # u_no_solo.append(z3.Not(
+                    #     z3.And(
+                    #         # z3.And(*[edge_vars[u, v2] == (0 if v2 != v else 1) for v2 in C[c2]]),  # N_X(u) == 1
+                    #         # Departing from the algorithm in the paper.
+                    #         # sum(edge_vars[u, v2] for v2 in C[c2]) > 0,
+                    #         sum(edge_vars[v, u2] for u2 in C[c1]) == 1  # N_W(y) == 1
+                    #     )
+                    # ))
+                    u_no_solo.append(
+                        z3.Or(
+                            edge_vars[v, u] == 0,
+                            sum(edge_vars[v, u2] for u2 in C[c1]) > 1
                         )
+                    )
 
-                    ))
-
-            constrs.append(z3.Or(z3.And(*u_no_witness), z3.And(*u_no_solo_solo)))
+            constrs.append(z3.Or(z3.And(*u_no_witness), z3.And(*u_no_solo)))
 
 
 def make_graph_from_solver(edge_vars, solver, F=None):
@@ -106,9 +113,14 @@ def make_graph_from_solver(edge_vars, solver, F=None):
     # solver = z3.Solver()
     # solver.add(*constrs)
 
-    assert solver.check() == z3.sat
+    # assert solver.check() == z3.sat
 
-    model = solver.model()
+    try:
+        model = solver.model()
+    except z3.Z3Exception:
+        print('Checking the solver as it had not been executed.')
+        solver.check()
+
     G = nx.Graph()
     for (i, j), v in edge_vars.items():
         if i < j and model[v] == 1:

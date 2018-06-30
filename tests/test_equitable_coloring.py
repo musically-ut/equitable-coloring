@@ -20,6 +20,7 @@ def test_is_coloring():
 
     coloring[0] = 1
     assert not is_coloring(G, coloring)
+    assert not is_equitable(G, coloring)
 
 
 def test_is_equitable():

@@ -187,8 +187,7 @@ def procedure_P(V_minus, V_plus, N, H, F, C, L, excluded_colors=None):
         reachable.extend(next_layer)
 
     # Variables for the algorithm
-    s = len(L) / len(C)
-    b = s * (len(C) - len(A_cal))
+    b = (len(C) - len(A_cal))
 
     if V_plus in A_cal:
         # Easy case: V+ is in A_cal
@@ -219,13 +218,14 @@ def procedure_P(V_minus, V_plus, N, H, F, C, L, excluded_colors=None):
                     continue
 
                 for U in C.keys():
-                    if N[(v, U)] == 1 and U not in A_cal:
+                    # Note: Departing from the paper here.
+                    if N[(v, U)] >= 1 and U not in A_cal:
                         X_prime = U
                         w = v
 
                         # Finding the solo neighbor of w in X_prime
                         y_candidates = [node for node in L[w]
-                                        if node in C[X_prime] and N[(node, W_1)] == 1]
+                                        if F[node] == X_prime and N[(node, W_1)] == 1]
 
                         if len(y_candidates) > 0:
                             y = y_candidates[0]
@@ -249,13 +249,14 @@ def procedure_P(V_minus, V_plus, N, H, F, C, L, excluded_colors=None):
                             made_equitable = True
                             break
 
-                else:
-                    A_cal_0.add(W_1)
-                    A_0.update(C[W_1])
-                    num_terminal_sets_found += 1
-
                 if made_equitable:
                     break
+            else:
+                # No node in W_1 was found such that
+                # it had a solo-neighbor.
+                A_cal_0.add(W_1)
+                A_0.update(C[W_1])
+                num_terminal_sets_found += 1
 
             if num_terminal_sets_found == b:
                 # Otherwise, construct the maximal independent set and find
@@ -272,7 +273,7 @@ def procedure_P(V_minus, V_plus, N, H, F, C, L, excluded_colors=None):
                     pop = reachable[idx]
                     idx += 1
 
-                    B_cal_prime.append(pop)
+                    B_cal_prime.add(pop)
 
                     # No need to check for excluded_colors here because
                     # they only exclude colors from A_cal
@@ -296,11 +297,11 @@ def procedure_P(V_minus, V_plus, N, H, F, C, L, excluded_colors=None):
 
                 # Add the nodes in V_plus to I first.
                 for z in C[V_plus] + B_prime:
-                    if z in I_covered or F[z] in B_cal_prime:
+                    if z in I_covered or F[z] not in B_cal_prime:
                         continue
 
                     I_set.add(z)
-                    I_covered.add([z])
+                    I_covered.add(z)
                     I_covered.update([nbr for nbr in L[z]])
 
                     for w in L[z]:
@@ -310,7 +311,7 @@ def procedure_P(V_minus, V_plus, N, H, F, C, L, excluded_colors=None):
                             else:
                                 # Found z1, z2 which have the same solo
                                 # neighbor in some W
-                                z_1 = W_covering[z]
+                                z_1 = W_covering[w]
                                 # z_2 = z
 
                                 Z = F[z_1]
@@ -332,7 +333,8 @@ def procedure_P(V_minus, V_plus, N, H, F, C, L, excluded_colors=None):
 
                                 # change color of w to some color in B_cal
                                 W_plus = [k for k in C.keys()
-                                          if N[(w, k)] == 0][0]
+                                          if N[(w, k)] == 0 and
+                                          k not in A_cal][0]
                                 change_color(w, W, W_plus,
                                              N=N, H=H, F=F, C=C, L=L)
 
@@ -347,6 +349,9 @@ def procedure_P(V_minus, V_plus, N, H, F, C, L, excluded_colors=None):
 
                                 made_equitable = True
                                 break
+
+                    if made_equitable:
+                        break
                 else:
                     assert False, "Must find a w which is the solo neighbor " \
                                   "of two vertices in B_cal_prime."
@@ -378,17 +383,17 @@ def equitable_color(G, num_colors):
 
      Examples
      --------
-     >>> from equitable_coloring import equitable_color
+     >>> from equitable_coloring import equitable_color, is_equitable
      >>> G = nx.cycle_graph(4)
      >>> d = equitable_color(G, num_colors=3)
-     >>> d in [{0: 0, 1: 1, 2: 0, 3: 1}, {0: 1, 1: 0, 2: 1, 3: 0}] # TODO: Fix
-     False
+     >>> is_equitable(d)
+     True
 
      References
      ----------
-     .. [1] H.A. KIERSTEAD and A.V. KOSTOCHKA: A short proof of the Hajnal-Szemeredi
-     theorem on equitable colouring. Combinatorics, Probability and Computing, 17(2),
-     (2008), 265-270.
+     .. [1] Kierstead, H. A., Kostochka, A. V., Mydlarz, M., & Szemerédi, E.
+     (2010). A fast algorithm for equitable coloring. Combinatorica, 30(2),
+     217-224.
     """
 
     # Map nodes to integers for simplicity later.
