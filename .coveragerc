@@ -7,7 +7,6 @@ source =
 branch = true
 source =
     equitable_coloring
-    tests
 parallel = true
 
 [report]
