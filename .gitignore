@@ -62,5 +62,4 @@ docs/_build/
 target/
 
 .cookiecutterrc
-.bumpversion.cfg
 .*_cache/
