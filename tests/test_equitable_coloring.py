@@ -2,14 +2,14 @@ import networkx as nx
 import pytest
 
 from equitable_coloring import equitable_color
-from equitable_coloring.core import check_state
-from equitable_coloring.core import is_coloring
-from equitable_coloring.core import is_equitable
-from equitable_coloring.core import make_C_from_F
-from equitable_coloring.core import make_H_from_C_N
-from equitable_coloring.core import make_N_from_L_C
-from equitable_coloring.core import max_degree
 from equitable_coloring.core import procedure_P
+from equitable_coloring.utils import check_state
+from equitable_coloring.utils import is_coloring
+from equitable_coloring.utils import is_equitable
+from equitable_coloring.utils import make_C_from_F
+from equitable_coloring.utils import make_H_from_C_N
+from equitable_coloring.utils import make_N_from_L_C
+from equitable_coloring.utils import max_degree
 
 
 def test_is_coloring():

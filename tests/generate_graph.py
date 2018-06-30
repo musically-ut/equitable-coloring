@@ -1,10 +1,8 @@
 import networkx as nx
 import z3
 
-from equitable_coloring.core import is_coloring
-from equitable_coloring.core import make_C_from_F
-from equitable_coloring.core import make_H_from_C_N
-from equitable_coloring.core import make_N_from_L_C
+from equitable_coloring.utils import is_coloring
+from equitable_coloring.utils import make_C_from_F
 
 
 def make_hard_prob(num_colors, num_nodes_each_color, a):
@@ -129,24 +127,3 @@ def make_graph_from_solver(edge_vars, solver, F=None):
     if F is not None:
         assert is_coloring(G, coloring=F)
     return G
-
-
-def make_params_from_graph(G, F):
-    """Returns {N, L, H, C} from the given graph."""
-    num_nodes = len(G)
-    L = {u: [] for u in range(num_nodes)}
-    for (u, v) in G.edges:
-        L[u].append(v)
-        L[v].append(u)
-
-    C = make_C_from_F(F)
-    N = make_N_from_L_C(L, C)
-    H = make_H_from_C_N(C, N)
-
-    return {
-        'N': N,
-        'F': F,
-        'C': C,
-        'H': H,
-        'L': L,
-    }
