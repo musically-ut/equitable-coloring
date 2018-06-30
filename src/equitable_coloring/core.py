@@ -296,7 +296,8 @@ def equitable_color(G, num_colors):
 
      Parameters
      ----------
-     G : NetworkX graph
+     G : networkX graph
+        The nodes of this graph will be colored.
 
      num_colors : number of colors to use
         This number must be at least one more than the maximum degree of nodes
@@ -309,10 +310,12 @@ def equitable_color(G, num_colors):
 
      Examples
      --------
-     >>> from equitable_coloring import equitable_color, is_equitable
+     >>> import networkx as nx
+     >>> from equitable_coloring import equitable_color
+     >>> from equitable_coloring.utils import is_equitable
      >>> G = nx.cycle_graph(4)
      >>> d = equitable_color(G, num_colors=3)
-     >>> is_equitable(d)
+     >>> is_equitable(G, d)
      True
 
      References
