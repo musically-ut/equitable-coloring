@@ -5,5 +5,4 @@ equitable_coloring
 
     from equitable_coloring import *
 
-.. automodule:: equitable_coloring
-    :members:
+.. autofunction:: equitable_coloring.equitable_color

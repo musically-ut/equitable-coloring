@@ -318,8 +318,8 @@ def equitable_color(G, num_colors):
      References
      ----------
      .. [1] Kierstead, H. A., Kostochka, A. V., Mydlarz, M., & Szemerédi, E.
-     (2010). A fast algorithm for equitable coloring. Combinatorica, 30(2),
-     217-224.
+         (2010). A fast algorithm for equitable coloring. Combinatorica, 30(2),
+         217-224.
     """
 
     # Map nodes to integers for simplicity later.
