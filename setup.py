@@ -24,7 +24,7 @@ def read(*names, **kwargs):
 
 setup(
     name='equitable-coloring',
-    version='0.1.1',
+    version='0.1.2',
     license='MIT license',
     description='Equitable coloring for networkX graphs.',
     long_description='%s\n%s' % (
