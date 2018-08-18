@@ -318,6 +318,12 @@ def equitable_color(G, num_colors):
      >>> is_equitable(G, d)
      True
 
+    Raises
+    ------
+    NetworkXAlgorithmError
+        If the maximum degree of the graph ``G`` is greater than
+        ``num_colors``.
+
      References
      ----------
      .. [1] Kierstead, H. A., Kostochka, A. V., Mydlarz, M., & Szemerédi, E.
