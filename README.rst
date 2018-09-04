@@ -2,6 +2,9 @@
 Overview
 ========
 
+
+**Note**: There is an active PR for including this algorithm in ``networkx`` at `networkx/#3127 <https://github.com/networkx/networkx/pull/3127>`_.
+
 .. start-badges
 
 .. list-table::
