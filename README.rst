@@ -2,8 +2,7 @@
 Overview
 ========
 
-
-**Note**: There is an active PR for including this algorithm in ``networkx`` at `networkx/#3127 <https://github.com/networkx/networkx/pull/3127>`_.
+**Update**: This is now merged into ``networkx`` package (via `networkx/#3127 <https://github.com/networkx/networkx/pull/3127>`_). See `networkx.algorithms.coloring.equitable_color <https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.coloring.equitable_color.html>`_.
 
 .. start-badges
 
